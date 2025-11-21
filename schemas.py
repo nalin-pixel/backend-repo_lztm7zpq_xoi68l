@@ -1,48 +1,53 @@
 """
-Database Schemas
+Database Schemas for Laboratory App
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in MongoDB.
+Collection name is the lowercase of the class name.
 """
-
-from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
+from typing import Optional, List
+from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
 
 class User(BaseModel):
     """
     Users collection schema
-    Collection name: "user" (lowercase of class name)
+    Collection: "user"
     """
     name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
+    email: EmailStr = Field(..., description="Email address")
+    password_hash: str = Field(..., description="BCrypt hash of the user's password")
+    role: str = Field("patient", description="Role of the user (patient/admin)")
     is_active: bool = Field(True, description="Whether user is active")
 
-class Product(BaseModel):
+class Service(BaseModel):
     """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
+    Laboratory services/tests offered
+    Collection: "service"
     """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    code: str = Field(..., description="Unique service code, e.g. CBC")
+    name: str = Field(..., description="Service name")
+    description: Optional[str] = Field(None, description="Short description")
+    price: float = Field(..., ge=0, description="Price in USD")
+    active: bool = Field(True, description="Whether this service is available")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Payment(BaseModel):
+    """
+    Payment/Order record
+    Collection: "payment"
+    """
+    user_id: str = Field(..., description="User identifier (as string)")
+    service_code: str = Field(..., description="Purchased service code")
+    amount: float = Field(..., ge=0, description="Charged amount")
+    status: str = Field("paid", description="Payment status: pending/paid/failed/refunded")
+    reference: str = Field(..., description="Gateway reference or internal ref")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Result(BaseModel):
+    """
+    Test results for a user
+    Collection: "result"
+    """
+    user_id: str = Field(..., description="User identifier (as string)")
+    service_code: str = Field(..., description="Related service/test code")
+    values: dict = Field(default_factory=dict, description="Result values as key-value pairs")
+    notes: Optional[str] = Field(None, description="Additional notes")
+    reported_at: datetime = Field(default_factory=datetime.utcnow, description="Report timestamp")
